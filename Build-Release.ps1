@@ -96,8 +96,11 @@ $Notes = @"
 "@
 
 Write-Host "Checking whether Release $Tag already exists..."
+$PreviousNativePreference = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
 gh release view $Tag --repo $Repo *> $null
 $ExistingRelease = $LASTEXITCODE -eq 0
+$ErrorActionPreference = $PreviousNativePreference
 
 if ($ExistingRelease) {
     Write-Host "Release $Tag already exists; replacing uploaded assets..."
