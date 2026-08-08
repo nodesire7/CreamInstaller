@@ -21,6 +21,7 @@ internal static class LocalizationManager
     }
 
     private static readonly ConditionalWeakTable<Control, ControlState> States = new();
+    private static bool idleHooked;
 
     private static readonly Dictionary<string, string> ZhCn = new(StringComparer.Ordinal)
     {
@@ -84,12 +85,21 @@ internal static class LocalizationManager
         ConfiguredLanguage = NormalizeConfiguredLanguage(configuredLanguage);
         EffectiveLanguage = ResolveEffectiveLanguage(ConfiguredLanguage);
         ApplyCulture();
+        HookGlobalRefresh();
     }
 
     internal static void SetLanguage(string configuredLanguage)
     {
         Initialize(configuredLanguage);
         ApplyToAllOpenForms();
+    }
+
+    private static void HookGlobalRefresh()
+    {
+        if (idleHooked)
+            return;
+        Application.Idle += (_, _) => ApplyToAllOpenForms();
+        idleHooked = true;
     }
 
     internal static string NormalizeConfiguredLanguage(string language)
@@ -105,7 +115,7 @@ internal static class LocalizationManager
         if (configuredLanguage != Auto)
             return configuredLanguage;
 
-        string name = CultureInfo.CurrentUICulture.Name;
+        string name = CultureInfo.InstalledUICulture.Name;
         return name.StartsWith("zh", StringComparison.OrdinalIgnoreCase)
             ? SimplifiedChinese
             : English;
@@ -121,7 +131,6 @@ internal static class LocalizationManager
         }
         catch
         {
-            // Fall back to the process culture if a culture is unavailable.
         }
     }
 
@@ -198,7 +207,9 @@ internal static class LocalizationManager
         {
             if (string.IsNullOrEmpty(state.SourcePlaceholder))
                 state.SourcePlaceholder = box.PlaceholderText ?? "";
-            box.PlaceholderText = Translate(state.SourcePlaceholder);
+            box.PlaceholderText = EffectiveLanguage == English
+                ? state.SourcePlaceholder
+                : Translate(state.SourcePlaceholder);
         }
     }
 
