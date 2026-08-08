@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Windows.Forms;
 
 namespace CreamInstaller.Utility;
@@ -152,6 +153,52 @@ internal static class LocalizationManager
         if (ZhCn.TryGetValue(text, out string translated))
             return translated;
 
+        if (text.IndexOfAny(['\r', '\n']) >= 0)
+            return TranslateMultiline(text);
+
+        return TranslateSingleLine(text);
+    }
+
+    private static string TranslateMultiline(string text)
+    {
+        StringBuilder result = new(text.Length + 64);
+        int lineStart = 0;
+
+        for (int i = 0; i < text.Length; i++)
+        {
+            char c = text[i];
+            if (c is not ('\r' or '\n'))
+                continue;
+
+            result.Append(TranslateSingleLine(text[lineStart..i]));
+
+            if (c == '\r' && i + 1 < text.Length && text[i + 1] == '\n')
+            {
+                result.Append("\r\n");
+                i++;
+            }
+            else
+                result.Append(c);
+
+            lineStart = i + 1;
+        }
+
+        if (lineStart < text.Length)
+            result.Append(TranslateSingleLine(text[lineStart..]));
+
+        return result.ToString();
+    }
+
+    private static string TranslateSingleLine(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+            return text;
+
+        text = text.Replace('\u00A0', ' ');
+
+        if (ZhCn.TryGetValue(text, out string translated))
+            return translated;
+
         if (text.StartsWith("An update is available: v", StringComparison.Ordinal))
             return "发现可用更新：v" + text[25..];
 
@@ -188,10 +235,49 @@ internal static class LocalizationManager
             return "DLC：" + text[6..];
 
         if (text.StartsWith("Operation succeeded for ", StringComparison.Ordinal))
-            return "操作成功：" + text[24..];
+            return ChineseSentence("操作成功：" + text[24..]);
 
         if (text.StartsWith("Operation failed for ", StringComparison.Ordinal))
-            return "操作失败：" + text[21..];
+            return ChineseSentence("操作失败：" + text[21..]);
+
+        const string installSummary = "DLC unlocker(s) successfully installed and generated for ";
+        if (text.StartsWith(installSummary, StringComparison.Ordinal) && text.EndsWith(" program(s).", StringComparison.Ordinal))
+            return "已成功为 " + text[installSummary.Length..^12] + " 个程序安装并生成 DLC 解锁器。";
+
+        const string uninstallSummary = "DLC unlocker(s) successfully uninstalled for ";
+        if (text.StartsWith(uninstallSummary, StringComparison.Ordinal) && text.EndsWith(" program(s).", StringComparison.Ordinal))
+            return "已成功为 " + text[uninstallSummary.Length..^12] + " 个程序卸载 DLC 解锁器。";
+
+        const string installFailure = "DLC unlocker installation and/or generation failed: ";
+        if (text.StartsWith(installFailure, StringComparison.Ordinal))
+            return "DLC 解锁器安装和/或生成失败：" + text[installFailure.Length..];
+
+        const string uninstallFailure = "DLC unlocker uninstallation failed: ";
+        if (text.StartsWith(uninstallFailure, StringComparison.Ordinal))
+            return "DLC 解锁器卸载失败：" + text[uninstallFailure.Length..];
+
+        if (TryTranslatePrefixed(text, "Wrote 32-bit SmokeAPI: ", "已写入 32 位 SmokeAPI：", out translated)
+            || TryTranslatePrefixed(text, "Wrote 64-bit SmokeAPI: ", "已写入 64 位 SmokeAPI：", out translated)
+            || TryTranslatePrefixed(text, "Wrote SmokeAPI: ", "已写入 SmokeAPI：", out translated)
+            || TryTranslatePrefixed(text, "Wrote 32-bit CreamAPI: ", "已写入 32 位 CreamAPI：", out translated)
+            || TryTranslatePrefixed(text, "Wrote 64-bit CreamAPI: ", "已写入 64 位 CreamAPI：", out translated)
+            || TryTranslatePrefixed(text, "Wrote CreamAPI: ", "已写入 CreamAPI：", out translated)
+            || TryTranslatePrefixed(text, "Deleted old configuration: ", "已删除旧配置：", out translated)
+            || TryTranslatePrefixed(text, "Deleted unnecessary configuration: ", "已删除不必要的配置：", out translated)
+            || TryTranslatePrefixed(text, "Deleted configuration: ", "已删除配置：", out translated)
+            || TryTranslatePrefixed(text, "Deleted cache: ", "已删除缓存：", out translated)
+            || TryTranslatePrefixed(text, "Deleted log: ", "已删除日志：", out translated)
+            || TryTranslatePrefixed(text, "Deleted SmokeAPI: ", "已删除 SmokeAPI：", out translated)
+            || TryTranslatePrefixed(text, "Deleted CreamAPI: ", "已删除 CreamAPI：", out translated)
+            || TryTranslatePrefixed(text, "Renamed Steamworks: ", "已重命名 Steamworks：", out translated)
+            || TryTranslatePrefixed(text, "Restored Steamworks: ", "已还原 Steamworks：", out translated))
+            return translated;
+
+        if (text.StartsWith("Added locked DLC to SmokeAPI.config.json with appid ", StringComparison.Ordinal))
+            return "已向 SmokeAPI.config.json 添加锁定 DLC，AppID " + text[50..];
+
+        if (text.StartsWith("Added extra DLC to SmokeAPI.config.json with appid ", StringComparison.Ordinal))
+            return "已向 SmokeAPI.config.json 添加额外 DLC，AppID " + text[49..];
 
         if (text.StartsWith("Installing ", StringComparison.Ordinal))
             return TranslateOperation(text, false);
@@ -201,6 +287,21 @@ internal static class LocalizationManager
 
         return text;
     }
+
+    private static bool TryTranslatePrefixed(string text, string prefix, string translatedPrefix, out string translated)
+    {
+        if (text.StartsWith(prefix, StringComparison.Ordinal))
+        {
+            translated = translatedPrefix + text[prefix.Length..];
+            return true;
+        }
+
+        translated = "";
+        return false;
+    }
+
+    private static string ChineseSentence(string text)
+        => text.EndsWith('.', StringComparison.Ordinal) ? text[..^1] + "。" : text;
 
     private static string TranslateOperation(string text, bool uninstalling)
     {
@@ -213,8 +314,8 @@ internal static class LocalizationManager
         result = result.Replace(" in proxy mode for ", "（代理模式），目标：", StringComparison.Ordinal);
         result = result.Replace(" from ", "，来源：", StringComparison.Ordinal);
         result = result.Replace(" for ", "，目标：", StringComparison.Ordinal);
-        result = result.Replace(" . . . ", "……", StringComparison.Ordinal);
-        return result;
+        result = result.Replace(" . . .", "……", StringComparison.Ordinal);
+        return result.TrimEnd();
     }
 
     internal static void ApplyToAllOpenForms()
