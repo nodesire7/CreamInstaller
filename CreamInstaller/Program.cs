@@ -103,14 +103,16 @@ internal static class Program
             {
                 try
                 {
-                HttpClientManager.Setup();
-                AppSettings = ProgramData.LoadSettings(); // load persisted settings
-                using UpdateForm form = new();
+                    HttpClientManager.Setup();
+                    AppSettings = ProgramData.LoadSettings(); // load persisted settings
+                    LocalizationManager.Initialize(AppSettings.Language);
+                    using UpdateForm form = new();
 #if DEBUG
-                DebugForm.Current.Attach(form);
+                    DebugForm.Current.Attach(form);
 #endif
-                // Apply initial theme (dark by default)
-                Utility.ThemeManager.Apply(form);
+                    // Apply initial theme and language before showing the first window.
+                    ThemeManager.Apply(form);
+                    LocalizationManager.Apply(form);
                     Application.Run(form);
                     retry = false;
                 }
