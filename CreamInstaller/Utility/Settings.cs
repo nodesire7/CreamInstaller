@@ -6,4 +6,5 @@ internal sealed class SettingsModel
     public bool BlockProtectedGames { get; set; } = true;
     public bool DarkModeEnabled { get; set; } = true;
     public bool SortByName { get; set; } = true;
+    public string Language { get; set; } = LocalizationManager.Auto;
 }

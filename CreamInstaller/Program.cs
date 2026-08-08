@@ -105,12 +105,14 @@ internal static class Program
                 {
                 HttpClientManager.Setup();
                 AppSettings = ProgramData.LoadSettings(); // load persisted settings
+                LocalizationManager.Initialize(AppSettings.Language);
                 using UpdateForm form = new();
 #if DEBUG
                 DebugForm.Current.Attach(form);
 #endif
                 // Apply initial theme (dark by default)
                 Utility.ThemeManager.Apply(form);
+                LocalizationManager.Apply(form);
                     Application.Run(form);
                     retry = false;
                 }
