@@ -38,6 +38,9 @@ Write-Host ""
 
 Write-Host "Checking GitHub authentication..."
 gh auth status
+if ($LASTEXITCODE -ne 0) {
+    throw "GitHub CLI is not authenticated. Run: gh auth login"
+}
 
 if (Test-Path -LiteralPath $PublishDir) {
     Remove-Item -LiteralPath $PublishDir -Recurse -Force
@@ -50,14 +53,20 @@ New-Item -ItemType Directory -Path $DistDir | Out-Null
 
 Write-Host "Restoring dependencies..."
 dotnet restore $Solution
+if ($LASTEXITCODE -ne 0) {
+    throw "dotnet restore failed."
+}
 
 Write-Host "Publishing Windows x64 single-file build..."
-dotnet publish $Solution `
+dotnet publish $Project `
     -c Release `
     -r win-x64 `
     -p:PublishSingleFile=true `
     --self-contained true `
     --output $PublishDir
+if ($LASTEXITCODE -ne 0) {
+    throw "dotnet publish failed."
+}
 
 $Exe = Join-Path $PublishDir "CreamInstaller.exe"
 if (-not (Test-Path -LiteralPath $Exe)) {
@@ -86,17 +95,16 @@ $Notes = @"
 - CreamInstaller.zip：程序内置自动更新功能使用的更新包。
 "@
 
-$ExistingRelease = $false
-try {
-    gh release view $Tag --repo $Repo *> $null
-    $ExistingRelease = $true
-} catch {
-    $ExistingRelease = $false
-}
+Write-Host "Checking whether Release $Tag already exists..."
+gh release view $Tag --repo $Repo *> $null
+$ExistingRelease = $LASTEXITCODE -eq 0
 
 if ($ExistingRelease) {
     Write-Host "Release $Tag already exists; replacing uploaded assets..."
     gh release upload $Tag $ReleaseExe $ReleaseZip --repo $Repo --clobber
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to upload Release assets."
+    }
 } else {
     Write-Host "Creating GitHub Release $Tag..."
     gh release create $Tag `
@@ -106,6 +114,9 @@ if ($ExistingRelease) {
         --target main `
         --title "CreamInstaller v$Version 多语言版" `
         --notes $Notes
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to create GitHub Release."
+    }
 }
 
 Write-Host ""
