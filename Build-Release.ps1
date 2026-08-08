@@ -102,8 +102,19 @@ $NotesLines = @(
 $Notes = [string]::Join([Environment]::NewLine, $NotesLines)
 
 Write-Host "Checking whether Release $Tag already exists..."
-& gh release view $Tag --repo $Repo 1>$null 2>$null
-$ExistingRelease = $LASTEXITCODE -eq 0
+# Windows PowerShell 5.1 converts native stderr into ErrorRecord objects.
+# gh returns "release not found" on stderr for a missing release, which is an
+# expected condition here. Temporarily suppress native-command errors so the
+# exit code can be used as the existence test.
+$PreviousErrorActionPreference = $ErrorActionPreference
+try {
+    $ErrorActionPreference = "SilentlyContinue"
+    & gh release view $Tag --repo $Repo 1>$null 2>$null
+    $ExistingRelease = $LASTEXITCODE -eq 0
+}
+finally {
+    $ErrorActionPreference = $PreviousErrorActionPreference
+}
 
 if ($ExistingRelease) {
     Write-Host "Release $Tag already exists; replacing uploaded assets..."
