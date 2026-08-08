@@ -11,6 +11,13 @@ namespace CreamInstaller.Forms;
 
 internal sealed partial class SettingsForm : CustomForm
 {
+    private static readonly string[] LanguageKeys =
+    [
+        LocalizationManager.Auto,
+        LocalizationManager.English,
+        LocalizationManager.SimplifiedChinese
+    ];
+
     private bool wasDarkModeEnabled;
     private bool wasSortByName;
 
@@ -36,6 +43,14 @@ internal sealed partial class SettingsForm : CustomForm
         sortByNameCheckBox.Checked = Program.SortByName;
         wasDarkModeEnabled = Program.DarkModeEnabled;
         wasSortByName = Program.SortByName;
+
+        languageComboBox.Items.Clear();
+        foreach (string language in LanguageKeys)
+            _ = languageComboBox.Items.Add(LocalizationManager.GetLanguageDisplayName(language));
+
+        string configured = LocalizationManager.NormalizeConfiguredLanguage(Program.AppSettings.Language);
+        int selectedIndex = Array.IndexOf(LanguageKeys, configured);
+        languageComboBox.SelectedIndex = selectedIndex < 0 ? 0 : selectedIndex;
     }
 
     private void OnSaveClick(object sender, EventArgs e)
@@ -43,6 +58,12 @@ internal sealed partial class SettingsForm : CustomForm
         Program.DarkModeEnabled = darkModeCheckBox.Checked;
         Program.BlockProtectedGames = blockedGamesCheckBox.Checked;
         Program.SortByName = sortByNameCheckBox.Checked;
+
+        int languageIndex = languageComboBox.SelectedIndex;
+        string selectedLanguage = languageIndex >= 0 && languageIndex < LanguageKeys.Length
+            ? LanguageKeys[languageIndex]
+            : LocalizationManager.Auto;
+        Program.AppSettings.Language = selectedLanguage;
 
         ProgramData.SaveSettings(Program.AppSettings);
 
@@ -55,6 +76,8 @@ internal sealed partial class SettingsForm : CustomForm
 
         if (wasSortByName != sortByNameCheckBox.Checked)
             MainForm.Current?.UpdateSortOrder(sortByNameCheckBox.Checked);
+
+        LocalizationManager.SetLanguage(selectedLanguage);
 
         DialogResult = DialogResult.OK;
         Close();
@@ -81,11 +104,11 @@ internal sealed partial class SettingsForm : CustomForm
             {
                 if (Path.GetFileName(file).Equals("settings.json", StringComparison.OrdinalIgnoreCase))
                     continue;
-                try { File.Delete(file); } catch { /* skip locked files */ }
+                try { File.Delete(file); } catch { }
             }
             foreach (string dir in Directory.GetDirectories(cachePath))
             {
-                try { Directory.Delete(dir, true); } catch { /* skip locked dirs */ }
+                try { Directory.Delete(dir, true); } catch { }
             }
         }
 
@@ -106,7 +129,7 @@ internal sealed partial class SettingsForm : CustomForm
         string steamCmdPath = ProgramData.DirectoryPath + @"\SteamCMD";
         await Task.Run(() =>
         {
-            try { Directory.Delete(steamCmdPath, true); } catch { /* directory may not exist */ }
+            try { Directory.Delete(steamCmdPath, true); } catch { }
         });
 
         Progress<int> progress = new();

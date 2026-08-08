@@ -46,12 +46,14 @@ internal class CustomForm : Form
     {
         base.OnHandleCreated(e);
         ThemeManager.Apply(this); // apply current theme (initial or toggled)
+        LocalizationManager.Apply(this);
     }
 
     protected override void OnShown(EventArgs e)
     {
         base.OnShown(e);
         ThemeManager.Apply(this); // ensure late-added controls also themed
+        LocalizationManager.Apply(this); // localize late-added and runtime-created controls
     }
 
     private void OnHelpButtonClicked(object sender, EventArgs args)
@@ -75,7 +77,7 @@ internal class CustomForm : Form
             + "    4. CAREFULLY select which games' DLCs you wish to unlock.\n"
             + "            Obviously none of the DLC unlockers are tested for every single game!\n"
             + "    5. Choose whether or not to install with Koaloader, and if so then also pick the proxy DLL to use.\n"
-            + "            If the default \'version.dll\' doesn't work, then see [here](https://cs.rin.ru/forum/viewtopic.php?p=2552172#p2552172) to find one that does.\n"
+            + "            If the default 'version.dll' doesn't work, then see [here](https://cs.rin.ru/forum/viewtopic.php?p=2552172#p2552172) to find one that does.\n"
             + "    6. Click the \"Generate and Install\" button.\n"
             + "    7. Click the \"OK\" button to close the program.\n"
             + "    8. If any of the DLC unlockers cause problems with any of the games you installed them on, simply go back\n"
