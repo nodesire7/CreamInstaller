@@ -22,7 +22,7 @@ internal static class Program
             ? index
             : Application.ProductVersion.Length)];
 
-    internal const string RepositoryOwner = "FroggMaster";
+    internal const string RepositoryOwner = "nodesire7";
     internal static readonly string RepositoryName = Name;
     internal static readonly string RepositoryPackage = Name + ".zip";
     internal static readonly string RepositoryExecutable = Name + ".exe";
