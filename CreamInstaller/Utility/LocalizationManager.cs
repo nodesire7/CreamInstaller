@@ -153,7 +153,7 @@ internal static class LocalizationManager
         if (ZhCn.TryGetValue(text, out string translated))
             return translated;
 
-        if (text.IndexOfAny(['\r', '\n']) >= 0)
+        if (text.Contains('\r') || text.Contains('\n'))
             return TranslateMultiline(text);
 
         return TranslateSingleLine(text);
@@ -273,11 +273,13 @@ internal static class LocalizationManager
             || TryTranslatePrefixed(text, "Restored Steamworks: ", "已还原 Steamworks：", out translated))
             return translated;
 
-        if (text.StartsWith("Added locked DLC to SmokeAPI.config.json with appid ", StringComparison.Ordinal))
-            return "已向 SmokeAPI.config.json 添加锁定 DLC，AppID " + text[50..];
+        const string addedLockedDlc = "Added locked DLC to SmokeAPI.config.json with appid ";
+        if (text.StartsWith(addedLockedDlc, StringComparison.Ordinal))
+            return "已向 SmokeAPI.config.json 添加锁定 DLC，AppID " + text[addedLockedDlc.Length..];
 
-        if (text.StartsWith("Added extra DLC to SmokeAPI.config.json with appid ", StringComparison.Ordinal))
-            return "已向 SmokeAPI.config.json 添加额外 DLC，AppID " + text[49..];
+        const string addedExtraDlc = "Added extra DLC to SmokeAPI.config.json with appid ";
+        if (text.StartsWith(addedExtraDlc, StringComparison.Ordinal))
+            return "已向 SmokeAPI.config.json 添加额外 DLC，AppID " + text[addedExtraDlc.Length..];
 
         if (text.StartsWith("Installing ", StringComparison.Ordinal))
             return TranslateOperation(text, false);
@@ -301,7 +303,7 @@ internal static class LocalizationManager
     }
 
     private static string ChineseSentence(string text)
-        => text.EndsWith('.', StringComparison.Ordinal) ? text[..^1] + "。" : text;
+        => text.EndsWith(".", StringComparison.Ordinal) ? text[..^1] + "。" : text;
 
     private static string TranslateOperation(string text, bool uninstalling)
     {
